@@ -1,0 +1,428 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+    font-family: Inter, system-ui, sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    min-width: 320px;
+}
+
+html {
+    scroll-padding-top: 90px;
+}
+
+/* Основний контейнер */
+
+.section-switcher {
+    position: relative;
+    width: 100%;
+    height: calc(100svh - var(--navbar-height, 72px));
+    overflow: hidden;
+    background: #ffffff;
+    isolation: isolate;
+}
+
+.dark .section-switcher {
+    background: #0a0a0a;
+}
+
+/* Кожна сторінка */
+
+.section-switcher-page {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.section-switcher-page.is-active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    z-index: 2;
+}
+
+.section-switcher-page.is-leaving {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Нова секція знизу */
+
+.page-enter-from-bottom {
+    animation: sectionEnterBottom 750ms
+        cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Нова секція зверху */
+
+.page-enter-from-top {
+    animation: sectionEnterTop 750ms
+        cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Попередня секція йде вгору */
+
+.page-exit-to-top {
+    animation: sectionExitTop 750ms
+        cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Попередня секція йде вниз */
+
+.page-exit-to-bottom {
+    animation: sectionExitBottom 750ms
+        cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Анімації */
+
+@keyframes sectionEnterBottom {
+    from {
+        opacity: 0;
+        transform: translateY(100%) scale(0.94);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes sectionEnterTop {
+    from {
+        opacity: 0;
+        transform: translateY(-100%) scale(0.94);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes sectionExitTop {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(-100%) scale(0.94);
+    }
+}
+
+@keyframes sectionExitBottom {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(100%) scale(0.94);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-enter-from-bottom,
+    .page-enter-from-top,
+    .page-exit-to-top,
+    .page-exit-to-bottom {
+        animation-duration: 1ms;
+    }
+}
+
+/* ======================================
+   PROJECT CARDS
+====================================== */
+
+.project-card {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+
+    overflow: hidden;
+    border-radius: 16px;
+
+    perspective: 1000px;
+    isolation: isolate;
+
+    background: #f2f2f2;
+
+    transition:
+        transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+        box-shadow 0.5s ease;
+}
+
+/* Зображення */
+
+.project-card-image {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.project-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+
+    transition: transform 0.6s ease;
+}
+
+/* Панель з описом */
+
+.project-card-content {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+
+    padding: 20px;
+    overflow-y: auto;
+
+    background: #f8faf9;
+
+    transform: rotateX(-90deg);
+    transform-origin: bottom;
+
+    opacity: 0;
+    visibility: hidden;
+
+    transition:
+        transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+        opacity 0.3s ease,
+        visibility 0.3s;
+}
+
+/* Темна тема */
+
+.dark .project-card-content {
+    background: #181818;
+}
+
+/* Hover тільки для пристроїв із мишкою */
+
+@media (hover: hover) and (pointer: fine) {
+    .project-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 14px 35px rgba(0, 0, 0, 0.12);
+    }
+
+    .project-card:hover .project-card-content {
+        transform: rotateX(0deg);
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .project-card:hover .project-card-image img {
+        transform: scale(1.05);
+    }
+}
+
+/* Натискання на мобільних */
+
+.project-card.is-open .project-card-content {
+    transform: rotateX(0deg);
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Адаптація */
+
+@media (max-width: 479px) {
+    .project-card {
+        aspect-ratio: 16 / 10;
+    }
+
+    .project-card-content {
+        padding: 16px;
+    }
+}
+
+/* Зменшення анімацій */
+
+@media (prefers-reduced-motion: reduce) {
+    .project-card,
+    .project-card-content,
+    .project-card-image img {
+        transition: none;
+    }
+}
+
+
+
+
+/* Поява нової послуги у розрахунку */
+
+@keyframes pricingItemEnter {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.pricing-item-enter {
+    animation: pricingItemEnter 0.35s ease-out;
+}
+
+/* Анімація зміни фінальної ціни */
+
+@keyframes pricingTotalEnter {
+    from {
+        opacity: 0.55;
+        transform: translateY(7px) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.pricing-total-enter {
+    animation: pricingTotalEnter 0.4s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pricing-item-enter,
+    .pricing-total-enter {
+        animation: none;
+    }
+}
+  
+/* ==========================================
+   CONTACT — SOCIAL CARDS
+========================================== */
+
+.contact-social-card {
+    text-decoration: none;
+}
+
+@media (hover: hover) {
+    .contact-social-card:hover {
+        transform: translateY(-7px);
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.07);
+    }
+}
+
+/* Instagram */
+
+.contact-instagram .contact-social-icon {
+    background: rgba(225, 48, 108, 0.10);
+    color: #e1306c;
+}
+
+.contact-instagram:hover {
+    border-color: rgba(225, 48, 108, 0.4);
+}
+
+/* Telegram */
+
+.contact-telegram .contact-social-icon {
+    background: rgba(38, 165, 228, 0.10);
+    color: #26a5e4;
+}
+
+.contact-telegram:hover {
+    border-color: rgba(38, 165, 228, 0.4);
+}
+
+/* Gmail */
+
+.contact-gmail .contact-social-icon {
+    background: rgba(234, 67, 53, 0.10);
+    color: #ea4335;
+}
+
+.contact-gmail:hover {
+    border-color: rgba(234, 67, 53, 0.4);
+}
+
+/* Темна тема */
+
+.dark .contact-social-card:hover {
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.25);
+}
+
+/* Доступність */
+
+@media (prefers-reduced-motion: reduce) {
+    .contact-social-card,
+    .contact-social-icon {
+        transition: none;
+    }
+}
+
+/* ======================================
+   ABOUT — MOBILE DETAILS
+====================================== */
+
+@media (max-width: 639px) {
+    .about-details {
+        display: grid;
+        grid-template-rows: 0fr;
+        opacity: 0;
+
+        transition:
+            grid-template-rows 0.4s ease,
+            opacity 0.3s ease;
+    }
+
+    .about-details > div {
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .about-details-open {
+        grid-template-rows: 1fr;
+        opacity: 1;
+    }
+
+    .about-details:not(.about-details-open) {
+        visibility: hidden;
+    }
+
+    .about-details-open {
+        visibility: visible;
+    }
+}
+
+@media (min-width: 640px) {
+    .about-details {
+        display: block;
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .about-details {
+        transition: none;
+    }
+}
