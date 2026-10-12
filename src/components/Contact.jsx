@@ -3,7 +3,6 @@ const contacts = [
     {
         id: "instagram",
         title: "Instagram",
-        description: "Мої публікації та повідомлення",
         button: "Відкрити Instagram",
         href: "https://www.instagram.com/deti_xoronyat_konya/",
     },
