@@ -56,14 +56,17 @@ const Navbar = () => {
     return (
         <header
             className={`
-                fixed left-0 top-0 z-50 w-full
-                border-b transition-all duration-300
-                ${
-                    scrolled || isOpen
-                        ? "border-slate-200/80 bg-white/95 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#0A0A0A]/95"
-                        : "border-transparent bg-white/90 backdrop-blur-md dark:bg-[#0A0A0A]/90"
+        fixed left-0 top-0 z-50 w-full
+        border-b border-transparent
+        bg-transparent shadow-none
+        backdrop-blur-none
+        transition-all duration-300
+
+        ${scrolled || isOpen
+                    ? "lg:border-slate-200/80 lg:bg-white/95 lg:shadow-sm lg:backdrop-blur-xl dark:lg:border-white/10 dark:lg:bg-[#0A0A0A]/95"
+                    : "lg:bg-white/90 lg:backdrop-blur-md dark:lg:bg-[#0A0A0A]/90"
                 }
-            `}
+    `}
         >
             <nav
                 className="

@@ -15,8 +15,6 @@ const SECTION_IDS = [
     "contact",
 ];
 
-const ANIMATION_DURATION = 750;
-const NAVBAR_HEIGHT = 72;
 const SECTION_TITLES = [
     "Головна",
     "Про мене",
@@ -26,12 +24,73 @@ const SECTION_TITLES = [
 ];
 
 const SITE_TITLE = "Портфоліо веброзробника";
+
+const ANIMATION_DURATION = 750;
+const NAVBAR_HEIGHT = 72;
+
+const SCROLL_TOLERANCE = 3;
+const WHEEL_THRESHOLD = 15;
+const TOUCH_THRESHOLD = 60;
+
+// ======================================
+// ПЕРЕВІРКА ВНУТРІШНЬОЇ ПРОКРУТКИ
+// ======================================
+
+const canScrollInside = (target, direction, page) => {
+    let element =
+        target instanceof Element ? target : null;
+
+    while (element) {
+        const style = window.getComputedStyle(element);
+
+        const isScrollable =
+            style.overflowY === "auto" ||
+            style.overflowY === "scroll";
+
+        if (isScrollable) {
+            const maxScroll =
+                element.scrollHeight - element.clientHeight;
+
+            if (maxScroll > SCROLL_TOLERANCE) {
+                const atTop =
+                    element.scrollTop <= SCROLL_TOLERANCE;
+
+                const atBottom =
+                    element.scrollTop >=
+                    maxScroll - SCROLL_TOLERANCE;
+
+                if (direction > 0 && !atBottom) {
+                    return true;
+                }
+
+                if (direction < 0 && !atTop) {
+                    return true;
+                }
+            }
+        }
+
+        // Перевіряємо також саму сторінку
+        if (element === page) {
+            break;
+        }
+
+        element = element.parentElement;
+    }
+
+    return false;
+};
+
+// ======================================
+// SECTION SWITCHER
+// ======================================
+
 const SectionSwitcher = ({ children }) => {
     const sections = Children.toArray(children);
 
     const getInitialIndex = () => {
         const hash = window.location.hash.slice(1);
         const index = SECTION_IDS.indexOf(hash);
+
         return index >= 0 ? index : 0;
     };
 
@@ -44,6 +103,10 @@ const SectionSwitcher = ({ children }) => {
     const touchStartRef = useRef(null);
     const timeoutRef = useRef(null);
     const pagesRef = useRef([]);
+
+    // ======================================
+    // ПЕРЕХІД МІЖ СЕКЦІЯМИ
+    // ======================================
 
     const navigateTo = useCallback(
         (nextIndex) => {
@@ -59,6 +122,7 @@ const SectionSwitcher = ({ children }) => {
             lockedRef.current = true;
 
             const currentIndex = activeRef.current;
+
             const nextDirection =
                 nextIndex > currentIndex ? 1 : -1;
 
@@ -68,9 +132,26 @@ const SectionSwitcher = ({ children }) => {
 
             activeRef.current = nextIndex;
 
-            // Повертаємо нову секцію на початок
-            if (pagesRef.current[nextIndex]) {
-                pagesRef.current[nextIndex].scrollTop = 0;
+            // Скидаємо прокрутку нової секції
+            const nextPage = pagesRef.current[nextIndex];
+
+            if (nextPage) {
+                nextPage.scrollTop = 0;
+
+                // Також скидаємо вкладені скрол-контейнери
+                nextPage
+                    .querySelectorAll("*")
+                    .forEach((element) => {
+                        const style =
+                            window.getComputedStyle(element);
+
+                        if (
+                            style.overflowY === "auto" ||
+                            style.overflowY === "scroll"
+                        ) {
+                            element.scrollTop = 0;
+                        }
+                    });
             }
 
             window.history.replaceState(
@@ -88,30 +169,48 @@ const SectionSwitcher = ({ children }) => {
         },
         [sections.length]
     );
+
+    // ======================================
+    // ДИНАМІЧНИЙ TITLE
+    // ======================================
+
     useEffect(() => {
         const sectionTitle =
             SECTION_TITLES[activeIndex] || "Головна";
 
         document.title = `${sectionTitle} | ${SITE_TITLE}`;
     }, [activeIndex]);
+
+    // ======================================
+    // WHEEL / TOUCH / NAVIGATION
+    // ======================================
+
     useEffect(() => {
+        // ----------------------------------
+        // КОЛЕСО МИШІ / ТАЧПАД
+        // ----------------------------------
+
         const handleWheel = (event) => {
-            const page = pagesRef.current[activeRef.current];
+            const page =
+                pagesRef.current[activeRef.current];
 
             if (!page) return;
 
-            const { scrollTop, scrollHeight, clientHeight } = page;
+            if (Math.abs(event.deltaY) < WHEEL_THRESHOLD) {
+                return;
+            }
 
-            const canScrollDown =
-                scrollTop + clientHeight < scrollHeight - 2;
+            const scrollDirection =
+                event.deltaY > 0 ? 1 : -1;
 
-            const canScrollUp = scrollTop > 2;
-
-            // Якщо всередині секції ще є контент,
-            // спочатку прокручуємо його
+            // Якщо можна прокрутити внутрішній контент,
+            // НЕ перемикаємо секцію
             if (
-                (event.deltaY > 0 && canScrollDown) ||
-                (event.deltaY < 0 && canScrollUp)
+                canScrollInside(
+                    event.target,
+                    scrollDirection,
+                    page
+                )
             ) {
                 return;
             }
@@ -119,64 +218,102 @@ const SectionSwitcher = ({ children }) => {
             event.preventDefault();
 
             if (lockedRef.current) return;
-            if (Math.abs(event.deltaY) < 15) return;
 
             navigateTo(
-                activeRef.current + (event.deltaY > 0 ? 1 : -1)
+                activeRef.current + scrollDirection
             );
         };
 
+        // ----------------------------------
+        // ПОЧАТОК СВАЙПУ
+        // ----------------------------------
+
         const handleTouchStart = (event) => {
-            touchStartRef.current = event.touches[0].clientY;
+            if (event.touches.length !== 1) {
+                touchStartRef.current = null;
+                return;
+            }
+
+            touchStartRef.current = {
+                y: event.touches[0].clientY,
+                target: event.target,
+            };
         };
 
-        const handleTouchEnd = (event) => {
-            if (touchStartRef.current === null) return;
+        // ----------------------------------
+        // ЗАВЕРШЕННЯ СВАЙПУ
+        // ----------------------------------
 
-            const delta =
-                touchStartRef.current -
-                event.changedTouches[0].clientY;
+        const handleTouchEnd = (event) => {
+            const touchStart = touchStartRef.current;
 
             touchStartRef.current = null;
 
-            if (Math.abs(delta) < 60) return;
+            if (!touchStart) return;
 
-            const page = pagesRef.current[activeRef.current];
+            const delta =
+                touchStart.y -
+                event.changedTouches[0].clientY;
+
+            if (Math.abs(delta) < TOUCH_THRESHOLD) {
+                return;
+            }
+
+            const page =
+                pagesRef.current[activeRef.current];
 
             if (!page) return;
 
-            const { scrollTop, scrollHeight, clientHeight } = page;
+            const scrollDirection =
+                delta > 0 ? 1 : -1;
 
-            const canScrollDown =
-                scrollTop + clientHeight < scrollHeight - 2;
-
-            const canScrollUp = scrollTop > 2;
-
+            // Перевіряємо вкладену прокрутку
             if (
-                (delta > 0 && canScrollDown) ||
-                (delta < 0 && canScrollUp)
+                canScrollInside(
+                    touchStart.target,
+                    scrollDirection,
+                    page
+                )
             ) {
                 return;
             }
 
+            if (lockedRef.current) return;
+
             navigateTo(
-                activeRef.current + (delta > 0 ? 1 : -1)
+                activeRef.current + scrollDirection
             );
         };
 
+        // ----------------------------------
+        // ЯКОРІ НАВБАРУ
+        // ----------------------------------
+
         const handleClick = (event) => {
-            const link = event.target.closest('a[href^="#"]');
+            const target = event.target;
+
+            if (!(target instanceof Element)) {
+                return;
+            }
+
+            const link = target.closest('a[href^="#"]');
 
             if (!link) return;
 
             const id = link.getAttribute("href").slice(1);
+
             const index = SECTION_IDS.indexOf(id);
 
             if (index < 0) return;
 
             event.preventDefault();
+
             navigateTo(index);
         };
+
+        // ----------------------------------
+        // ЗМІНА URL
+        // ----------------------------------
 
         const handleHashChange = () => {
             const index = SECTION_IDS.indexOf(
@@ -192,32 +329,65 @@ const SectionSwitcher = ({ children }) => {
             passive: false,
         });
 
-        window.addEventListener("touchstart", handleTouchStart, {
-            passive: true,
-        });
+        window.addEventListener(
+            "touchstart",
+            handleTouchStart,
+            { passive: true }
+        );
 
-        window.addEventListener("touchend", handleTouchEnd, {
-            passive: true,
-        });
+        window.addEventListener(
+            "touchend",
+            handleTouchEnd,
+            { passive: true }
+        );
 
         document.addEventListener("click", handleClick);
-        window.addEventListener("hashchange", handleHashChange);
+
+        window.addEventListener(
+            "hashchange",
+            handleHashChange
+        );
 
         return () => {
-            window.removeEventListener("wheel", handleWheel);
-            window.removeEventListener("touchstart", handleTouchStart);
-            window.removeEventListener("touchend", handleTouchEnd);
-            document.removeEventListener("click", handleClick);
-            window.removeEventListener("hashchange", handleHashChange);
+            window.removeEventListener(
+                "wheel",
+                handleWheel
+            );
+
+            window.removeEventListener(
+                "touchstart",
+                handleTouchStart
+            );
+
+            window.removeEventListener(
+                "touchend",
+                handleTouchEnd
+            );
+
+            document.removeEventListener(
+                "click",
+                handleClick
+            );
+
+            window.removeEventListener(
+                "hashchange",
+                handleHashChange
+            );
 
             clearTimeout(timeoutRef.current);
         };
     }, [navigateTo]);
 
+    // ======================================
+    // RENDER
+    // ======================================
+
     return (
         <div
             className="section-switcher"
-            style={{ "--navbar-height": `${NAVBAR_HEIGHT}px` }}
+            style={{
+                "--navbar-height": `${NAVBAR_HEIGHT}px`,
+            }}
         >
             {sections.map((section, index) => {
                 const isActive = index === activeIndex;
@@ -225,7 +395,10 @@ const SectionSwitcher = ({ children }) => {
 
                 let animationClass = "";
 
-                if (isActive && previousIndex !== null) {
+                if (
+                    isActive &&
+                    previousIndex !== null
+                ) {
                     animationClass =
                         direction === 1
                             ? "page-enter-from-bottom"
